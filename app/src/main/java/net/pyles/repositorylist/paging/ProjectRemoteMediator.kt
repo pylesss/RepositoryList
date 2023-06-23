@@ -27,29 +27,24 @@ class ProjectRemoteMediator @Inject constructor(
         state: PagingState<Int, ProjectEntity>
     ): MediatorResult {
         return try {
-            when (loadType) {
-                LoadType.REFRESH -> MediatorResult.Success( endOfPaginationReached = false )
-                LoadType.PREPEND -> {
-                    MediatorResult.Success(endOfPaginationReached = true)
-                }
-                LoadType.APPEND -> {
-                    val login = repository.getLogin()
-                    val position = repository.getProjectSize(login)
-                    val projects = remoteApi.getProjects(
-                        perPage = PAGE_SIZE,
-                        page = position / PAGE_SIZE + 1,
-                        login = login
-                    )
-                    userDb.withTransaction {
-                        if (loadType == LoadType.REFRESH) {
-                            userDb.userDao.cleanAllProjects()
-                        }
-                        val projectEntities = projects.map { it.toProjectEntity(login) }
-                        userDb.userDao.upsertUserProjects(projectEntities)
-                    }
-                    MediatorResult.Success( endOfPaginationReached = projects.isEmpty() )
-                }
+            if (loadType == LoadType.PREPEND) {
+                return MediatorResult.Success(endOfPaginationReached = true)
             }
+            val login = repository.getLogin()
+            val position = repository.getProjectSize(login)
+            val projects = remoteApi.getProjects(
+                perPage = state.config.pageSize,
+                page = position / PAGE_SIZE + 1,
+                login = login
+            )
+            userDb.withTransaction {
+                if (loadType == LoadType.REFRESH) {
+                    userDb.userDao.cleanAllProjects()
+                }
+                val projectEntities = projects.map { it.toProjectEntity(login) }
+                userDb.userDao.upsertUserProjects(projectEntities)
+            }
+            MediatorResult.Success( endOfPaginationReached = projects.isEmpty() )
         } catch (e: IOException) {
             MediatorResult.Error(e)
         } catch (e: HttpException) {

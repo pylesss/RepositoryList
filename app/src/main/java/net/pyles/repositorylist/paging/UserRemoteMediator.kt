@@ -27,39 +27,26 @@ class UserRemoteMediator @Inject constructor(
         state: PagingState<Int, UserEntity>,
     ): MediatorResult {
         return try {
-            when (loadType) {
-                LoadType.REFRESH -> {
-                    Log.d("MyTag", "Refresh")
-                    MediatorResult.Success(endOfPaginationReached = false)
-                }
-                LoadType.PREPEND -> {
-                    Log.d("MyTag", "Prepend")
-                    MediatorResult.Success(endOfPaginationReached = true)
-                }
-                LoadType.APPEND -> {
-                    Log.d("MyTag", "Append")
-                    val position = repository.getUserSize()
-                    val users = remoteApi.getUsers(
-                        perPage = PAGE_SIZE,
-                        since = position
-                    )
-                    Log.d("MyTag", "${users.size}")
-                    repository.setUserSize(position + PAGE_SIZE)
-                    userDb.withTransaction {
-                        if (loadType == LoadType.REFRESH) {
-                            userDb.userDao.clearAllUsers()
-                        }
-                        val userEntities = users.map { it.toUserEntity() }
-                        userDb.userDao.upsertAllUsers(userEntities)
-                    }
-                    MediatorResult.Success( endOfPaginationReached = users.isEmpty() )
-                }
+            if (loadType == LoadType.PREPEND) {
+                return MediatorResult.Success(endOfPaginationReached = true)
             }
+            val position = repository.getUserSize()
+            val users = remoteApi.getUsers(
+                perPage = state.config.pageSize,
+                since = position
+            )
+            repository.setUserSize(position + PAGE_SIZE)
+            userDb.withTransaction {
+                if (loadType == LoadType.REFRESH) {
+                    userDb.userDao.clearAllUsers()
+                }
+                val userEntities = users.map { it.toUserEntity() }
+                userDb.userDao.upsertAllUsers(userEntities)
+            }
+            MediatorResult.Success( endOfPaginationReached = users.isEmpty() )
         } catch (e: IOException) {
-            e.localizedMessage?.let { Log.d("MyTag", it) }
             MediatorResult.Error(e)
         } catch (e: HttpException) {
-            e.localizedMessage?.let { Log.d("MyTag", it) }
             MediatorResult.Error(e)
         }
     }

@@ -1,5 +1,6 @@
 package net.pyles.repositorylist.data.remote
 
+import net.pyles.repositorylist.core.API_KEY
 import retrofit2.http.GET
 import retrofit2.http.Headers
 import retrofit2.http.Path
@@ -25,6 +26,5 @@ interface RemoteApi {
         const val BASE_URL = "https://api.github.com/"
         const val USERS_KEY = "users"
         const val PROJECTS_KEY = "repos"
-        const val API_KEY = "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"
     }
 }
